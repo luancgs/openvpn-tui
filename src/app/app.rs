@@ -189,11 +189,12 @@ impl App {
                 let openvpn_connection = self.open_vpn_connection.as_ref().unwrap();
                 let stdout_buffer = openvpn_connection.stdout_buffer.lock().unwrap();
                 let stderr_buffer = openvpn_connection.stderr_buffer.lock().unwrap();
-                format!(
-                    "Stdout: {}\nStderr: {}",
-                    stdout_buffer.trim(),
-                    stderr_buffer.trim()
-                )
+
+                if stderr_buffer.is_empty() {
+                    format!("{}\n", stdout_buffer.trim())
+                } else {
+                    format!("{}\n\nERR: {}", stdout_buffer.trim(), stderr_buffer.trim())
+                }
             }
         } else {
             "No output".to_string()
@@ -209,7 +210,7 @@ impl App {
         Paragraph::new(info)
             .block(block)
             .fg(TEXT_FG_COLOR)
-            .wrap(Wrap { trim: false })
+            .wrap(Wrap { trim: true })
             .render(area, buf);
     }
 }

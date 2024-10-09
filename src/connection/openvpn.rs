@@ -64,29 +64,26 @@ impl OpenVpnConnection {
         let stdout_thread = thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
-                let line = line.unwrap();
+                let mut line = line.unwrap();
+                line = format!("{}\n", line);
                 let mut stdout_buffer = stdout_buffer.lock().unwrap();
                 stdout_buffer.push_str(&line);
-                print!("{}\n", line);
             }
         });
 
-        // Handle stderr in a separate thread
         let stderr_thread = thread::spawn(move || {
             let reader = BufReader::new(stderr);
             for line in reader.lines() {
-                let line = line.unwrap();
+                let mut line = line.unwrap();
+                line = format!("{}\n", line);
                 let mut stderr_buffer = stderr_buffer.lock().unwrap();
                 stderr_buffer.push_str(&line);
-                eprint!("{}\n", line);
             }
         });
 
-        // Wait for the threads to finish
         stdout_thread.join().unwrap();
         stderr_thread.join().unwrap();
 
-        // Wait for the child process to exit
         let status = child.wait()?;
         if !status.success() {
             eprintln!("OpenVPN process exited with status: {}", status);
