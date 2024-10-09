@@ -1,7 +1,8 @@
 use std::{
-    io::{self, Read},
+    io::{self, BufRead, BufReader},
     process::{Command, Stdio},
     sync::{Arc, Mutex},
+    thread::{self},
 };
 
 use super::connection::Connection;
@@ -60,32 +61,24 @@ impl OpenVpnConnection {
         let stdout_buffer = Arc::clone(&self.stdout_buffer);
         let stderr_buffer = Arc::clone(&self.stderr_buffer);
 
-        let stdout_thread = std::thread::spawn(move || {
-            let mut reader = io::BufReader::new(stdout);
-            let mut buffer = String::new();
-            while let Ok(bytes_read) = reader.read_to_string(&mut buffer) {
-                if bytes_read == 0 {
-                    break;
-                }
+        let stdout_thread = thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                let line = line.unwrap();
                 let mut stdout_buffer = stdout_buffer.lock().unwrap();
-                stdout_buffer.push_str(&buffer);
-                print!("{}", buffer);
-                buffer.clear();
+                stdout_buffer.push_str(&line);
+                print!("{}\n", line);
             }
         });
 
         // Handle stderr in a separate thread
-        let stderr_thread = std::thread::spawn(move || {
-            let mut reader = io::BufReader::new(stderr);
-            let mut buffer = String::new();
-            while let Ok(bytes_read) = reader.read_to_string(&mut buffer) {
-                if bytes_read == 0 {
-                    break;
-                }
+        let stderr_thread = thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                let line = line.unwrap();
                 let mut stderr_buffer = stderr_buffer.lock().unwrap();
-                stderr_buffer.push_str(&buffer);
-                eprint!("{}", buffer);
-                buffer.clear();
+                stderr_buffer.push_str(&line);
+                eprint!("{}\n", line);
             }
         });
 
