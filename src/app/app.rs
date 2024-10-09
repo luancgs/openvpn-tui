@@ -93,7 +93,15 @@ impl App {
         if let Some(i) = self.connections.state.selected() {
             self.connections.items[i].selected = true;
             let connection = &self.connections.items[i];
-            let openvpn_connection = OpenVpnConnection::new(connection.clone());
+            let mut openvpn_connection = OpenVpnConnection::new(connection.clone());
+
+            match openvpn_connection.connect() {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("Could not connect to the VPN: {}", e);
+                }
+            }
+
             self.open_vpn_connection = Some(openvpn_connection);
         }
     }
