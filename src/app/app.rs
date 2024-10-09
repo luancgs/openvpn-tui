@@ -1,13 +1,13 @@
-use crate::connection::connection::{Connection, ConnectionList};
+use crate::connection::{
+    connection::{Connection, ConnectionList},
+    openvpn::OpenVpnConnection,
+};
 use color_eyre::Result;
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     layout::{Constraint, Layout, Rect},
-    style::{
-        palette::tailwind::{BLUE, SLATE},
-        Color, Modifier, Style, Stylize,
-    },
+    style::{palette::tailwind::SLATE, Color, Modifier, Style, Stylize},
     symbols,
     text::Line,
     widgets::{
@@ -17,7 +17,6 @@ use ratatui::{
     DefaultTerminal,
 };
 
-const TODO_HEADER_STYLE: Style = Style::new().fg(SLATE.c100).bg(BLUE.c800);
 const NORMAL_ROW_BG: Color = SLATE.c950;
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const TEXT_FG_COLOR: Color = SLATE.c200;
@@ -25,6 +24,7 @@ const TEXT_FG_COLOR: Color = SLATE.c200;
 pub struct App {
     should_exit: bool,
     connections: ConnectionList,
+    open_vpn_connection: Option<OpenVpnConnection>,
 }
 
 impl Default for App {
@@ -32,6 +32,7 @@ impl Default for App {
         Self {
             should_exit: false,
             connections: ConnectionList::new(),
+            open_vpn_connection: None,
         }
     }
 }
@@ -91,6 +92,9 @@ impl App {
 
         if let Some(i) = self.connections.state.selected() {
             self.connections.items[i].selected = true;
+            let connection = &self.connections.items[i];
+            let openvpn_connection = OpenVpnConnection::new(connection.clone());
+            self.open_vpn_connection = Some(openvpn_connection);
         }
     }
 }
@@ -98,44 +102,51 @@ impl App {
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let [header_area, main_area, footer_area] = Layout::vertical([
-            Constraint::Length(2),
+            Constraint::Length(1),
             Constraint::Fill(1),
             Constraint::Length(1),
         ])
         .areas(area);
 
-        let [list_area, item_area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]).areas(main_area);
-
         App::render_header(header_area, buf);
         App::render_footer(footer_area, buf);
-        self.render_list(list_area, buf);
-        self.render_selected_item(item_area, buf);
+        self.render_main_area(main_area, buf);
     }
 }
 
 /// Rendering logic for the app
 impl App {
     fn render_header(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("OpenVPN Connection Manager")
+        let header_text: &str = "OpenVPN Connection Manager";
+        Paragraph::new(header_text)
             .bold()
             .centered()
             .render(area, buf);
     }
 
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Use ↓↑ to move, ENTER to select, q to quit")
-            .centered()
-            .render(area, buf);
+        let footer_text: &str = "Use ↓↑ to move, ENTER to select, q to quit";
+        Paragraph::new(footer_text).centered().render(area, buf);
     }
 
-    fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render_main_area(&mut self, area: Rect, buf: &mut Buffer) {
+        let outer_block = Block::bordered().border_set(symbols::border::EMPTY);
+        let inner_area = outer_block.inner(area);
+
+        let [list_area, output_area] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Percentage(70)]).areas(inner_area);
+
+        outer_block.render(area, buf);
+        self.render_list_block(list_area, buf);
+        self.render_connection_output(output_area, buf);
+    }
+
+    fn render_list_block(&mut self, area: Rect, buf: &mut Buffer) {
         let block = Block::new()
-            .title(Line::raw("VPN List").centered())
-            .borders(Borders::TOP)
-            .border_set(symbols::border::EMPTY)
-            .border_style(TODO_HEADER_STYLE)
-            .bg(NORMAL_ROW_BG);
+            .title(Line::raw(" VPN List "))
+            .bold()
+            .borders(Borders::ALL)
+            .border_set(symbols::border::ROUNDED);
 
         let items: Vec<ListItem> = self
             .connections
@@ -155,26 +166,36 @@ impl App {
         let list = List::new(items)
             .block(block)
             .highlight_style(SELECTED_STYLE)
-            .highlight_symbol(">")
+            .highlight_symbol("> ")
             .highlight_spacing(HighlightSpacing::Always);
 
         StatefulWidget::render(list, area, buf, &mut self.connections.state);
     }
 
-    fn render_selected_item(&self, area: Rect, buf: &mut Buffer) {
+    fn render_connection_output(&self, area: Rect, buf: &mut Buffer) {
         let info = if let Some(i) = self.connections.state.selected() {
-            let connection = &self.connections.items[i];
-            format!("Path: {}", connection.path)
+            if self.open_vpn_connection.is_none() {
+                let connection = &self.connections.items[i];
+                format!("Path: {}", connection.path)
+            } else {
+                let openvpn_connection = self.open_vpn_connection.as_ref().unwrap();
+                let stdout_buffer = openvpn_connection.stdout_buffer.lock().unwrap();
+                let stderr_buffer = openvpn_connection.stderr_buffer.lock().unwrap();
+                format!(
+                    "Stdout: {}\nStderr: {}",
+                    stdout_buffer.trim(),
+                    stderr_buffer.trim()
+                )
+            }
         } else {
-            "No item selected".to_string()
+            "No output".to_string()
         };
 
         let block = Block::new()
-            .title(Line::raw("Path").centered())
-            .borders(Borders::TOP)
-            .border_set(symbols::border::EMPTY)
-            .border_style(TODO_HEADER_STYLE)
-            .bg(NORMAL_ROW_BG)
+            .title(Line::raw(" Output "))
+            .bold()
+            .borders(Borders::ALL)
+            .border_set(symbols::border::ROUNDED)
             .padding(Padding::horizontal(1));
 
         Paragraph::new(info)

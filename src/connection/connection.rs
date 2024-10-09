@@ -2,7 +2,7 @@ use ratatui::widgets::{ListItem, ListState};
 
 use super::files::list_vpn_files;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Connection {
     pub title: String,
     pub path: String,
