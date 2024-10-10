@@ -1,6 +1,6 @@
 use std::{
     io::{self, BufRead, BufReader},
-    process::{Command, Stdio},
+    process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
     thread::{self},
 };
@@ -12,6 +12,7 @@ pub struct OpenVpnConnection {
     connection: Connection,
     pub stdout_buffer: Arc<Mutex<String>>,
     pub stderr_buffer: Arc<Mutex<String>>,
+    pub child: Option<Child>,
 }
 
 impl OpenVpnConnection {
@@ -21,6 +22,7 @@ impl OpenVpnConnection {
             connection,
             stdout_buffer: Arc::new(Mutex::new(String::new())),
             stderr_buffer: Arc::new(Mutex::new(String::new())),
+            child: None,
         }
     }
 
@@ -65,15 +67,23 @@ impl OpenVpnConnection {
             }
         });
 
+        self.child = Some(child);
+        self.connected = true;
+
         stdout_thread.join().unwrap();
         stderr_thread.join().unwrap();
 
-        let status = child.wait()?;
-        if !status.success() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("OpenVPN exited with status: {}", status),
-            ));
+        Ok(())
+    }
+
+    pub fn stop(&mut self) -> io::Result<()> {
+        if !self.connected {
+            return Ok(());
+        }
+
+        if let Some(child) = &mut self.child {
+            child.kill()?;
+            self.connected = false;
         }
 
         Ok(())

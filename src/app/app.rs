@@ -25,6 +25,7 @@ pub struct App {
     should_exit: bool,
     connections: ConnectionList,
     open_vpn_connection: Option<OpenVpnConnection>,
+    output: String,
 }
 
 impl Default for App {
@@ -33,6 +34,7 @@ impl Default for App {
             should_exit: false,
             connections: ConnectionList::new(),
             open_vpn_connection: None,
+            output: String::new(),
         }
     }
 }
@@ -40,6 +42,11 @@ impl Default for App {
 impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         while !self.should_exit {
+            if self.open_vpn_connection.is_some() {
+                if let Some(openvpn_connection) = self.open_vpn_connection.as_mut() {
+                    let _ = openvpn_connection.stop()?;
+                }
+            }
             terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             if let Event::Key(key) = event::read()? {
                 self.handle_key(key);
@@ -180,7 +187,7 @@ impl App {
         StatefulWidget::render(list, area, buf, &mut self.connections.state);
     }
 
-    fn render_connection_output(&self, area: Rect, buf: &mut Buffer) {
+    fn render_connection_output(&mut self, area: Rect, buf: &mut Buffer) {
         let info = if let Some(i) = self.connections.state.selected() {
             if self.open_vpn_connection.is_none() {
                 let connection = &self.connections.items[i];
@@ -200,6 +207,8 @@ impl App {
             "No output".to_string()
         };
 
+        self.output = info.clone();
+
         let block = Block::new()
             .title(Line::raw(" Output "))
             .bold()
@@ -207,7 +216,7 @@ impl App {
             .border_set(symbols::border::ROUNDED)
             .padding(Padding::horizontal(1));
 
-        Paragraph::new(info)
+        Paragraph::new(self.output.clone())
             .block(block)
             .fg(TEXT_FG_COLOR)
             .wrap(Wrap { trim: true })
