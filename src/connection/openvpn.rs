@@ -86,7 +86,10 @@ impl OpenVpnConnection {
 
         let status = child.wait()?;
         if !status.success() {
-            eprintln!("OpenVPN process exited with status: {}", status);
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("OpenVPN exited with status: {}", status),
+            ));
         }
 
         Ok(())
