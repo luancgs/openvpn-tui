@@ -29,26 +29,10 @@ impl OpenVpnConnection {
             return Ok(());
         }
 
-        let openvpn_check = Command::new("openvpn")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-
-        match openvpn_check {
-            Ok(status) if status.success() => {}
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::NotFound,
-                    "OpenVPN is not installed",
-                ));
-            }
-        }
-
         let mut child = Command::new("sh")
             .arg("-c")
             .arg(format!(
-                "$(which openvpn) --config {}",
+                "$(which pkexec) $(which openvpn) --config {}",
                 self.connection.path
             ))
             .stdout(Stdio::piped())
