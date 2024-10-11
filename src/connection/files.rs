@@ -10,7 +10,7 @@ pub struct VpnFile {
 pub fn list_vpn_files() -> Vec<VpnFile> {
     let mut files = vec![];
 
-    let vpn_dir = match fs::read_dir(config::Config::default().vpn_files_path) {
+    let vpn_dir = match fs::read_dir(config::Config::from_file().vpn_files_path) {
         Ok(vpn_dir) => vpn_dir,
         Err(_) => {
             eprintln!("Could not read the VPN files directory");
