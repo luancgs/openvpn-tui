@@ -51,15 +51,9 @@ impl Config {
         let config = match fs::read_to_string(config_file) {
             Ok(contents) => match toml::from_str(&contents) {
                 Ok(config) => config,
-                Err(_) => {
-                    eprintln!("Could not parse the config file");
-                    process::exit(1);
-                }
+                Err(_) => Config::default(),
             },
-            Err(_) => {
-                eprintln!("Could not read the config file");
-                process::exit(1);
-            }
+            Err(_) => Config::default(),
         };
 
         config
