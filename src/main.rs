@@ -27,15 +27,4 @@ fn check_dependencies() {
         eprintln!("OpenVPN is not installed or not found in PATH");
         exit(1);
     }
-
-    let pkexec_check = Command::new("pkexec")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-
-    if !pkexec_check.is_ok_and(|result| result.success()) {
-        eprintln!("pkexec is not installed or not found in PATH");
-        exit(1);
-    }
 }

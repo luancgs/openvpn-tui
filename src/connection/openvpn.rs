@@ -34,7 +34,7 @@ impl OpenVpnConnection {
         let mut child = Command::new("sh")
             .arg("-c")
             .arg(format!(
-                "$(which pkexec) $(which openvpn) --config {}",
+                "$(which openvpn) --config {}",
                 self.connection.path
             ))
             .stdout(Stdio::piped())
