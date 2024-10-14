@@ -17,7 +17,7 @@ use ratatui::{
     DefaultTerminal,
 };
 
-const NORMAL_ROW_BG: Color = SLATE.c950;
+const NORMAL_ROW_BG: Color = Color::Reset;
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const TEXT_FG_COLOR: Color = SLATE.c200;
 
