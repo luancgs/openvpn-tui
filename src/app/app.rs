@@ -66,6 +66,7 @@ impl App {
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             KeyCode::Char('g') | KeyCode::Home => self.select_first(),
             KeyCode::Char('G') | KeyCode::End => self.select_last(),
+            KeyCode::Char('S') | KeyCode::Char('s') => self.stop_connection(),
             KeyCode::Enter => {
                 self.select_item();
             }
@@ -74,25 +75,55 @@ impl App {
     }
 
     fn select_none(&mut self) {
+        if self.is_connected() {
+            return;
+        }
+
         self.connections.state.select(None);
     }
 
     fn select_next(&mut self) {
+        if self.is_connected() {
+            return;
+        }
+
         self.connections.state.select_next();
     }
     fn select_previous(&mut self) {
+        if self.is_connected() {
+            return;
+        }
+
         self.connections.state.select_previous();
     }
 
     fn select_first(&mut self) {
+        if self.is_connected() {
+            return;
+        }
+
         self.connections.state.select_first();
     }
 
     fn select_last(&mut self) {
+        if self.is_connected() {
+            return;
+        }
+
         self.connections.state.select_last();
     }
 
+    fn stop_connection(&mut self) {
+        if let Some(openvpn_connection) = self.open_vpn_connection.as_mut() {
+            let _ = openvpn_connection.stop();
+        }
+    }
+
     fn select_item(&mut self) {
+        if self.is_connected() {
+            return;
+        }
+
         for i in 0..self.connections.items.len() {
             self.connections.items[i].selected = false;
         }
@@ -111,6 +142,10 @@ impl App {
 
             self.open_vpn_connection = Some(openvpn_connection);
         }
+    }
+
+    fn is_connected(&self) -> bool {
+        self.open_vpn_connection.is_some()
     }
 }
 
@@ -140,7 +175,7 @@ impl App {
     }
 
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        let footer_text: &str = "Use ↓↑ to move, ENTER to select, q to quit";
+        let footer_text: &str = "Use ↓↑ to move, ENTER to select, S to stop, q to quit";
         Paragraph::new(footer_text).centered().render(area, buf);
     }
 
