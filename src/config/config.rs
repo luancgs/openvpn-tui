@@ -13,7 +13,13 @@ impl Config {
         let config_dir = dirs::config_dir();
 
         match config_dir {
-            Some(path) => path.to_str().unwrap().to_string(),
+            Some(path) => match path.to_str() {
+                Some(path) => path.to_string(),
+                None => {
+                    eprintln!("Could not convert the config directory to a string");
+                    process::exit(1);
+                }
+            },
             None => {
                 eprintln!("Could not find the config directory");
                 process::exit(1);
